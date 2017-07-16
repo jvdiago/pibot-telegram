@@ -21,5 +21,5 @@ Simple telegram bot to manage some aspects of a Raspberry PI with Raspbian. It h
     $ /cmd  hostname
 
 ## Limitations
-
+Only works in python 3+
 Only tested on raspbian. Because of how it works (it does not save the last parsed line to seek afterwards, performance could be terrible on very large files.

@@ -8,13 +8,13 @@ LOG_FILE = 'pibot.log'
 
 JOBS = {
     'ssh': {
-        'log_file': 'auth.log',
+        'log_file': '/var/log/auth.log',
         'log_reader': SSHLog,
         'status_limits': [200, 400],
         'filter_networks': [ipaddress.ip_network('192.168.1.0/24')]
     },
     'nginx': {
-        'log_file': 'access.log',
+        'log_file': '/var/log/nginx/access.log',
         'log_reader': NginxLog,
         'status_limits': [200, 400],
         'filter_networks': [ipaddress.ip_network('192.168.1.0/24')]
