@@ -1,0 +1,6 @@
+*.pyc
+.cache/
+.idea/
+pibot.log
+__pycache__/
+
