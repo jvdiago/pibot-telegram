@@ -5,7 +5,8 @@ Simple telegram bot to manage some aspects of a Raspberry PI with Raspbian. It h
 ## Instructions
 
     $ pip install -r requirements.txt
-    $ Edit settings.py and add yout telegram chat token (TELEGRAM_TOKEN=)
+    $ Create settings_local.py and add yout telegram chat token and chat_id
+        (TELEGRAM_TOKEN="", TELEGRAM_BOT_ID="")
     $ python pibot.py
 
 ### Start log reader jobs
