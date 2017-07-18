@@ -3,4 +3,4 @@
 .idea/
 pibot.log
 __pycache__/
-
+settings_local.py

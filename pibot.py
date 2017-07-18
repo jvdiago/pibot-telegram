@@ -64,9 +64,12 @@ def logparser_job(bot, job):
                         if log.get_ip() in network:
                             notify = False
                     if notify:
-                        bot.sendMessage(job.context, text=str(log))
+                        bot.sendMessage(
+                            job=job.context,
+                            text=str(log),
+                            chat_id=settings.TELEGRAM_BOT_ID)
         except Exception as e:
-            logger.warn('Error parsing nginx logs: {0}'.format(e))
+            logger.warning('Error parsing nginx logs: {0}'.format(e))
 
 
 def set_wrapper(bot, update, args, job_queue, chat_data):
@@ -94,19 +97,47 @@ def set_wrapper(bot, update, args, job_queue, chat_data):
         update.message.reply_text('Usage: /set <job_name> <seconds>')
 
 
-def unset_wrapper(bot, update, args, job_queue, chat_data):
+def find_job(job_name, job_queue):
+    for j in job_queue.jobs():
+        if j.name == job_name:
+            return j
+    return None
+
+
+def job_status(bot, update, args, job_queue, chat_data):
     """Removes the job if the user changed their mind"""
+    if len(args) == 0:
+        update.message.reply_text('No parameter provided')
+        return
+
     job_name = args[0]
     if job_name not in settings.JOBS:
         update.message.reply_text(
             'Sorry {0} is not a valid job'.format(job_name))
         return
 
-    job = None
-    for j in job_queue.jobs():
-        if j.name == job_name:
-            job = j
-            break
+    job = find_job(job_name, job_queue)
+
+    if not job:
+        update.message.reply_text('{0} job is not running'.format(job_name))
+        return
+
+    update.message.reply_text('{0} job is running'.format(job_name))
+
+
+def unset_wrapper(bot, update, args, job_queue, chat_data):
+    """Removes the job if the user changed their mind"""
+    if len(args) == 0:
+        update.message.reply_text('No parameter provided')
+        return
+
+    job_name = args[0]
+    if len(args) == 0 or job_name not in settings.JOBS:
+        update.message.reply_text(
+            'Sorry {0} is not a valid job'.format(job_name))
+        return
+
+    job = find_job(job_name, job_queue)
 
     if not job:
         update.message.reply_text('You have no active job')
@@ -118,6 +149,10 @@ def unset_wrapper(bot, update, args, job_queue, chat_data):
 
 
 def cmd_job(bot, update, args, job_queue, chat_data):
+    if len(args) == 0:
+        update.message.reply_text('No parameter provided')
+        return
+
     alias = args[0]
 
     if alias not in settings.CMD.keys():
@@ -130,13 +165,22 @@ def cmd_job(bot, update, args, job_queue, chat_data):
     cmd = LocalCommand(command)
     c_out, c_err, c_returncode = cmd.execute()
 
-
     update.message.reply_text('Command: {0} executed\nOutput: {1}\nErrror: {2}\nCode: {3}'.format(
         command,
         c_out,
         c_err,
         c_returncode
     ))
+
+
+def auto_start(bot, job_queue):
+    """Adds a job to the queue"""
+    for job_name, job_settings in settings.JOBS.items():
+        interval = job_settings.get('default_interval')
+        if interval:
+            # Add job to queue
+            job_queue.run_repeating(logparser_job, interval, name=job_name)
+            bot.send_message(chat_id=settings.TELEGRAM_BOT_ID, text='{0} job set!'.format(job_name))
 
 
 def error(bot, update, error):
@@ -158,13 +202,21 @@ def main():
         pass_args=True,
         pass_job_queue=True,
         pass_chat_data=True))
+
+    dp.add_handler(CommandHandler(
+        "status",
+        job_status,
+        pass_args=True,
+        pass_job_queue=True,
+        pass_chat_data=True))
+
     dp.add_handler(CommandHandler(
         "unset",
         unset_wrapper,
         pass_args=True,
         pass_job_queue=True,
         pass_chat_data=True))
-    
+
     dp.add_handler(CommandHandler(
         "cmd",
         cmd_job,
@@ -174,6 +226,8 @@ def main():
 
     # log all errors
     dp.add_error_handler(error)
+
+    auto_start(updater.bot, updater.job_queue)
 
     # Start the Bot
     updater.start_polling()

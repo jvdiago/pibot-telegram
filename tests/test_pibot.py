@@ -3,7 +3,7 @@ from log_utils import LogReader, LogRecord
 from io import StringIO
 from unittest import mock
 import types
-from pibot import logparser_job, cmd_job
+from pibot import logparser_job, cmd_job, auto_start, job_status
 from datetime import datetime
 import ipaddress
 import settings
@@ -14,6 +14,16 @@ class TestLogReader(unittest.TestCase):
 
     def setUp(self):
         settings.LOG_FILE = None
+        settings.JOBS = {
+            'nginx': {
+                'log_file': 'test.log',
+                'log_reader': None,
+                'status_limits': [200, 400],
+                'filter_networks': [],
+                'default_interval': 300,
+            },
+            'test': {}
+        }
 
     @mock.patch(
         'log_utils.open',
@@ -31,15 +41,6 @@ class TestLogReader(unittest.TestCase):
 
     @mock.patch('pibot.LogReader', autospec=True)
     def test_logparser_job(self, log_reader_mock):
-        settings.JOBS = {
-            'nginx': {
-                'log_file': 'test.log',
-                'log_reader': None,
-                'status_limits': [200, 400],
-                'filter_networks': []
-            }
-        }
-
         log_record = mock.create_autospec(LogRecord)
 
         tz = tzlocal.get_localzone()
@@ -74,6 +75,40 @@ class TestLogReader(unittest.TestCase):
 
         self.assertEqual(command_mock.return_value.execute.call_count, 1)
         self.assertEqual(update.message.reply_text.call_count, 2)
+
+    def test_auto_start(self):
+        job_queue = mock.MagicMock()
+        bot = mock.MagicMock()
+        auto_start(bot, job_queue)
+        self.assertEqual(job_queue.run_repeating.call_count, 1)
+
+    def test_job_status(self):
+        job_name = 'nginx'
+        wrong_job_name = 'test'
+
+        job_queue = mock.MagicMock()
+        job_name_mock = mock.MagicMock()
+        job_name_mock.configure_mock(name=job_name)
+        job_queue.jobs.return_value = [job_name_mock]
+        update = mock.MagicMock()
+
+        job_status(
+            bot=None,
+            update=update,
+            job_queue=job_queue,
+            args=[job_name],
+            chat_data=None)
+        update.message.reply_text.assert_called_with(
+            '{0} job is running'.format(job_name))
+
+        job_status(
+            bot=None,
+            update=update,
+            job_queue=job_queue,
+            args=[wrong_job_name],
+            chat_data=None)
+        update.message.reply_text.assert_called_with(
+            '{0} job is not running'.format(wrong_job_name))
 
 
 if __name__ == '__main__':
