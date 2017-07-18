@@ -1,6 +1,6 @@
 # pibot-telegram
 
-Simple telegram bot to manage some aspects of a Raspberry PI with Raspbian. It has a bascic plugin support to add more commands and log readers
+Simple telegram bot to manage some aspects of a Raspberry PI with Raspbian. It has a basic plugin support to add more commands and log readers
 
 ## Instructions
 
